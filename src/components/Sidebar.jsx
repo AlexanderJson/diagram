@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Icons } from '../icons/Icons.jsx';
+import { DIAGRAM_TEMPLATES } from '../data/diagramTemplates.js';
 import { NODE_TYPES } from '../data/nodeTypes.js';
 
-export default function Sidebar({ onDragStart, onCreateCustomNode }) {
+export default function Sidebar({ onDragStart, onCreateCustomNode, onAddTemplate }) {
     // useState is like declaring a private instance variable: `private string customName = "";`
     // The setter (setCustomName) is the only way to mutate it, triggering a re-render.
     const [customName, setCustomName] = useState('');
@@ -41,6 +42,19 @@ export default function Sidebar({ onDragStart, onCreateCustomNode }) {
                         </div>
                     </div>
                 ))}
+
+                <div className="sidebar-category template-category">
+                    <h3>Snabbstartsmallar</h3>
+                    <p className="template-helper">Valfria startpunkter. Alla noder kan ändras efteråt.</p>
+                    <div className="template-list">
+                        {DIAGRAM_TEMPLATES.map((template) => (
+                            <button key={template.id} className="template-item" onClick={() => onAddTemplate(template.id)}>
+                                <span className="template-item-title"><Icons.Layers /> {template.label}</span>
+                                <span className="template-item-description">{template.description}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
             
             <div className="sidebar-footer">

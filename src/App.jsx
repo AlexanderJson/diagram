@@ -17,6 +17,7 @@ export default function App() {
             <Sidebar
                 onDragStart={editor.handleSidebarDragStart}
                 onCreateCustomNode={editor.createCustomNode}
+                onAddTemplate={editor.addTemplate}
             />
             <main className="main-content">
                 <Topbar

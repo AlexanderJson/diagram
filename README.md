@@ -3,6 +3,13 @@
 An interactive architecture and UML diagram editor. Drag components to the canvas,
 connect them, edit their details, and export or import a diagram as JSON.
 
+## Architecture planner
+
+Build diagrams node by node with API, CQRS, domain, infrastructure, and testing
+building blocks. Select a node to highlight its connected data flow. Optional
+quick-start templates add an editable example beside your current diagram; they
+never replace your existing work.
+
 ## Project structure
 
 - `src/App.jsx` composes the application screens.

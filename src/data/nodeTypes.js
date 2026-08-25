@@ -1,69 +1,87 @@
 import { Icons } from '../icons/Icons.jsx';
 
+const item = (type, label, icon, colorClass, description = '', extra = {}) => ({
+    type,
+    label,
+    icon,
+    colorClass,
+    defaults: { description, ...extra },
+});
+
 export const NODE_TYPES = [
-    {
-        category: 'Compute',
-        items: [
-            { type: 'server', label: 'Server', icon: Icons.Server, colorClass: 'node-blue' },
-            { type: 'microservice', label: 'Microservice', icon: Icons.Cpu, colorClass: 'node-indigo' },
-            { type: 'serverless', label: 'Serverless', icon: Icons.Zap, colorClass: 'node-yellow' },
-        ]
-    },
-    {
-        category: 'Database & Cache',
-        items: [
-            { type: 'sqldb', label: 'SQL DB', icon: Icons.Database, colorClass: 'node-green' },
-            { type: 'nosqldb', label: 'NoSQL DB', icon: Icons.Layers, colorClass: 'node-emerald' },
-            { type: 'dbtable', label: 'DB Tabell', icon: Icons.Table, colorClass: 'node-white-indigo' },
-            { type: 'cache', label: 'Cache', icon: Icons.Zap, colorClass: 'node-teal' },
-        ]
-    },
-    {
-        category: 'Network & Storage',
-        items: [
-            { type: 'loadbalancer', label: 'Load Balancer', icon: Icons.Network, colorClass: 'node-orange' },
-            { type: 'apigateway', label: 'API Gateway', icon: Icons.Cloud, colorClass: 'node-sky' },
-            { type: 'objectstore', label: 'Object Store', icon: Icons.Box, colorClass: 'node-amber' },
-        ]
-    },
-    {
-        category: 'External',
-        items: [
-            { type: 'client', label: 'Client App', icon: Icons.MonitorSmartphone, colorClass: 'node-slate' },
-            { type: 'users', label: 'Users', icon: Icons.Users, colorClass: 'node-slate' },
-        ]
-    },
-    {
-        category: 'Generell',
-        items: [
-            { type: 'custom', label: 'Egen Modul', icon: Icons.Box, colorClass: 'node-white-slate' },
-            { type: 'note', label: 'Anteckning', icon: Icons.FileText, colorClass: 'node-note' },
-        ]
-    },
-    {
-        category: 'UML / Klasser',
-        items: [
-            { type: 'classnode', label: 'Klass', icon: Icons.Code, colorClass: 'node-white-purple' },
-            { type: 'interface', label: 'Interface', icon: Icons.Code, colorClass: 'node-white-pink' }
-        ]
-    },
-    {
-        category: 'Gruppering & Områden',
-        items: [
-            { type: 'group', label: 'Grupp / Område', icon: Icons.SquareDashed, colorClass: 'node-group' }
-        ]
-    }
+    { category: 'Compute', items: [
+        item('server', 'Server', Icons.Server, 'node-blue', 'Kör en applikation eller tjänst.'),
+        item('microservice', 'Microservice', Icons.Cpu, 'node-indigo', 'En självständig tjänst med ett tydligt ansvar.'),
+        item('serverless', 'Serverless', Icons.Zap, 'node-yellow', 'Kod som körs vid en händelse eller ett anrop.'),
+    ] },
+    { category: 'Database & Cache', items: [
+        item('sqldb', 'SQL DB', Icons.Database, 'node-green', 'Relationsdatabas.'),
+        item('nosqldb', 'NoSQL DB', Icons.Layers, 'node-emerald', 'Dokument-, nyckelvärdes- eller grafdatabas.'),
+        item('dbtable', 'DB Tabell', Icons.Table, 'node-white-indigo', 'En tabell med kolumner.', { fields: [] }),
+        item('cache', 'Cache', Icons.Zap, 'node-teal', 'Snabb, tillfällig lagring.'),
+    ] },
+    { category: 'API & Delivery', items: [
+        item('endpoint', 'Endpoint', Icons.Network, 'node-sky', 'En URL som tar emot ett API-anrop.'),
+        item('controller', 'Controller', Icons.Code, 'node-blue', 'Tar emot API-anrop och skickar dem till applikationslagret.'),
+        item('middleware', 'Middleware', Icons.Layers, 'node-slate', 'Hanterar tvärgående HTTP-logik.'),
+        item('dto', 'DTO', Icons.FileText, 'node-white-indigo', 'Data som skickas mellan API och klient.'),
+    ] },
+    { category: 'Application & CQRS', items: [
+        item('service', 'Service', Icons.Settings, 'node-indigo', 'Orkestrerar en tydlig affärsåtgärd.'),
+        item('usecase', 'Use Case', Icons.Zap, 'node-amber', 'Ett användarfall med ett tydligt mål.'),
+        item('command', 'Command', Icons.Download, 'node-orange', 'En begäran som ändrar data eller tillstånd.'),
+        item('query', 'Query', Icons.Upload, 'node-teal', 'En begäran som läser data utan att ändra den.'),
+        item('commandhandler', 'Command Handler', Icons.Cpu, 'node-orange', 'Utför en Command.'),
+        item('queryhandler', 'Query Handler', Icons.Cpu, 'node-teal', 'Utför en Query.'),
+        item('validator', 'Validator', Icons.Check, 'node-green', 'Kontrollerar att indata följer reglerna.'),
+        item('mapper', 'Mapper', Icons.Move, 'node-sky', 'Översätter mellan modeller eller DTO:er.'),
+    ] },
+    { category: 'Domain Model', items: [
+        item('classnode', 'Klass', Icons.Code, 'node-white-purple', 'En klass med egenskaper och metoder.', { properties: [], methods: [] }),
+        item('interface', 'Interface', Icons.Code, 'node-white-pink', 'Ett kontrakt som implementationer följer.', { properties: [], methods: [] }),
+        item('entity', 'Entity', Icons.Box, 'node-white-purple', 'Ett domänobjekt med stabil identitet.'),
+        item('valueobject', 'Value Object', Icons.Layers, 'node-white-pink', 'Ett domänvärde utan egen identitet.'),
+        item('aggregate', 'Aggregate', Icons.Box, 'node-amber', 'En konsekvensgräns för relaterade domänobjekt.'),
+    ] },
+    { category: 'Infrastructure & Messaging', items: [
+        item('repository', 'Repository', Icons.Database, 'node-green', 'Läser och sparar domänobjekt.'),
+        item('dbcontext', 'Database Context', Icons.Database, 'node-emerald', 'Databasanslutning och enhet för arbete.'),
+        item('externalservice', 'Extern Tjänst', Icons.Cloud, 'node-sky', 'Ett system utanför din applikation.'),
+        item('event', 'Event', Icons.Zap, 'node-yellow', 'Ett faktum om något som redan har hänt.'),
+        item('messagebroker', 'Message Broker', Icons.Network, 'node-orange', 'Förmedlar asynkrona meddelanden mellan delar av systemet.'),
+        item('consumer', 'Consumer', Icons.Cpu, 'node-indigo', 'Lyssnar på och hanterar ett meddelande eller event.'),
+    ] },
+    { category: 'Testing', items: [
+        item('testproject', 'Test Project', Icons.Layers, 'node-slate', 'En samling automatiserade tester.'),
+        item('unittest', 'Unit Test', Icons.Check, 'node-green', 'Testar en liten del isolerat.'),
+        item('integrationtest', 'Integration Test', Icons.Network, 'node-sky', 'Testar flera delar tillsammans.'),
+        item('e2etest', 'E2E Test', Icons.MonitorSmartphone, 'node-indigo', 'Testar ett användarflöde från start till mål.'),
+        item('mockfake', 'Mock / Fake', Icons.Box, 'node-white-slate', 'En kontrollerad ersättning för ett beroende.'),
+        item('testfixture', 'Test Fixture', Icons.Settings, 'node-slate', 'Delad testdata och testuppsättning.'),
+        item('testdatabase', 'Test Database', Icons.Database, 'node-green', 'Tillfällig databas för integrationstester.'),
+    ] },
+    { category: 'Network & Storage', items: [
+        item('loadbalancer', 'Load Balancer', Icons.Network, 'node-orange', 'Fördelar trafik mellan flera instanser.'),
+        item('apigateway', 'API Gateway', Icons.Cloud, 'node-sky', 'En gemensam ingång till flera API:er.'),
+        item('objectstore', 'Object Store', Icons.Box, 'node-amber', 'Lagrar filer och objekt.'),
+    ] },
+    { category: 'External', items: [
+        item('client', 'Client App', Icons.MonitorSmartphone, 'node-slate', 'En webb-, mobil- eller desktopklient.'),
+        item('users', 'Users', Icons.Users, 'node-slate', 'Människor eller andra aktörer som använder systemet.'),
+    ] },
+    { category: 'Generell', items: [
+        item('custom', 'Egen Modul', Icons.Box, 'node-white-slate', 'En egen komponent eller modul.'),
+        item('note', 'Anteckning', Icons.FileText, 'node-note'),
+    ] },
+    { category: 'Gruppering & Områden', items: [
+        item('group', 'Grupp / Område', Icons.SquareDashed, 'node-group', '', { width: 350, height: 250 }),
+    ] },
 ];
 
-// Helper method analogous to a factory or lookup method in a Java class.
-export const getNodeConfig = (type) => {
+export function getNodeConfig(type) {
     for (const category of NODE_TYPES) {
-        for (const item of category.items) {
-            if (item.type === type) return item;
-        }
+        const match = category.items.find((definition) => definition.type === type);
+        if (match) return match;
     }
-    // Fallbacks
-    if (type === 'note') return { type: 'note', label: 'Anteckning', icon: Icons.FileText, colorClass: 'node-note' };
-    if (type === 'group') return { type: 'group', label: 'Grupp', icon: Icons.SquareDashed, colorClass: 'node-group' };
-    return { type: 'custom', label: 'Egen Modul', icon: Icons.Box, colorClass: 'node-white-slate' };
-};
+    return item('custom', 'Egen Modul', Icons.Box, 'node-white-slate');
+}

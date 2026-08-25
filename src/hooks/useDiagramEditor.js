@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { getDiagramTemplate } from '../data/diagramTemplates.js';
+import { createDiagramNode } from '../utils/nodeFactory.js';
 import { getNodeDimensions } from '../utils/nodeLayout.js';
 
 const emptyDragInfo = {
@@ -73,14 +75,12 @@ export function useDiagramEditor() {
         const wrapperRect = wrapperRef.current?.getBoundingClientRect() || { width: 800, height: 600 };
         const worldX = (wrapperRect.width / 2 - pan.x) / zoom;
         const worldY = (wrapperRect.height / 2 - pan.y) / zoom;
-        const newNode = {
+        const newNode = createDiagramNode('custom', {
             id: `node-${Date.now()}`,
-            type: 'custom',
             label: name,
-            description: '',
             x: worldX - 75 + (Math.random() * 40 - 20),
             y: worldY - 40 + (Math.random() * 40 - 20),
-        };
+        });
         setNodes((currentNodes) => [...currentNodes, newNode]);
         setSelectedNodeId(newNode.id);
     };
@@ -124,6 +124,42 @@ export function useDiagramEditor() {
     const zoomIn = () => setZoom((currentZoom) => Math.min(currentZoom * 1.15, 3));
     const zoomOut = () => setZoom((currentZoom) => Math.max(currentZoom * 0.85, 0.2));
 
+    const addTemplate = (templateId) => {
+        const template = getDiagramTemplate(templateId);
+        if (!template) return;
+
+        const wrapperRect = wrapperRef.current?.getBoundingClientRect() || { width: 800, height: 600 };
+        const templateX = template.nodes.map(([, , , x]) => x);
+        const templateY = template.nodes.map(([, , , , y]) => y);
+        const centerX = (Math.min(...templateX) + Math.max(...templateX) + 150) / 2;
+        const centerY = (Math.min(...templateY) + Math.max(...templateY) + 80) / 2;
+        const viewportX = (wrapperRect.width / 2 - pan.x) / zoom;
+        const viewportY = (wrapperRect.height / 2 - pan.y) / zoom;
+        const idPrefix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const idsByKey = new Map();
+
+        const newNodes = template.nodes.map(([key, type, label, x, y, overrides = {}], index) => {
+            const id = `node-${idPrefix}-${index}`;
+            idsByKey.set(key, id);
+            return createDiagramNode(type, {
+                id,
+                label,
+                x: x + viewportX - centerX,
+                y: y + viewportY - centerY,
+                ...overrides,
+            });
+        });
+        const newEdges = template.edges.map(([sourceKey, targetKey], index) => ({
+            id: `edge-${idPrefix}-${index}`,
+            source: idsByKey.get(sourceKey),
+            target: idsByKey.get(targetKey),
+        }));
+
+        setNodes((currentNodes) => [...currentNodes, ...newNodes]);
+        setEdges((currentEdges) => [...currentEdges, ...newEdges]);
+        setSelectedNodeId(newNodes.find((node) => node.type !== 'group')?.id || null);
+    };
+
     const handleSidebarDragStart = (event, type, label) => {
         event.dataTransfer.setData('nodeType', type);
         event.dataTransfer.setData('nodeLabel', label);
@@ -139,15 +175,12 @@ export function useDiagramEditor() {
         const wrapperRect = wrapperRef.current.getBoundingClientRect();
         const worldX = (event.clientX - wrapperRect.left - pan.x) / zoom;
         const worldY = (event.clientY - wrapperRect.top - pan.y) / zoom;
-        const newNode = {
+        const newNode = createDiagramNode(type, {
             id: `node-${Date.now()}`,
-            type,
             label,
-            description: '',
             x: worldX - (type === 'note' ? 96 : 75),
             y: worldY - (type === 'note' ? 64 : 40),
-            ...(type === 'group' ? { width: 350, height: 250 } : {}),
-        };
+        });
         setNodes((currentNodes) => [...currentNodes, newNode]);
         setSelectedNodeId(newNode.id);
     };
@@ -310,7 +343,7 @@ export function useDiagramEditor() {
     return {
         nodes, edges, selectedNodeId, detailModalNodeId, isConnecting, connectionStartNode,
         pan, zoom, isPanning, mouseWorldPos, dragInfo, dialog, isCopied, wrapperRef,
-        updateNode, deleteNode, deleteEdge, createCustomNode, resetView, fitView, zoomIn, zoomOut,
+        updateNode, deleteNode, deleteEdge, createCustomNode, addTemplate, resetView, fitView, zoomIn, zoomOut,
         handleSidebarDragStart, handleDrop, handleNodeMouseDown, handleResizeStart,
         handleCanvasMouseDown, handleMouseMove, handleMouseUp, handleCanvasClick,
         clearDiagram, closeDialog, exportJson, importJson, share,

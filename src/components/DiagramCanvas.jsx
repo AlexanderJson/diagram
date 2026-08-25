@@ -55,6 +55,7 @@ export default function DiagramCanvas({
                     isConnecting={isConnecting}
                     connectionStartNode={connectionStartNode}
                     mouseWorldPos={mouseWorldPos}
+                    selectedNodeId={selectedNodeId}
                     onDelete={onDeleteEdge}
                 />
                 {[...nodes]
