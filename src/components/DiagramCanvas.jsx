@@ -2,12 +2,15 @@ import React from 'react';
 import DiagramEdges from './DiagramEdges.jsx';
 import DiagramNode from './DiagramNode.jsx';
 import ZoomControls from './ZoomControls.jsx';
+import { getSelectionFlow } from '../utils/dataFlow.js';
 
 export default function DiagramCanvas({
     wrapperRef,
     nodes,
     edges,
     selectedNodeId,
+    selectedMethodId,
+    dataMappings,
     connectionStartNode,
     isConnecting,
     isPanning,
@@ -22,6 +25,7 @@ export default function DiagramCanvas({
     onNodeMouseDown,
     onResizeStart,
     onUpdateNode,
+    onSelectMethod,
     onDeleteEdge,
     onCanvasClick,
     onZoomIn,
@@ -29,6 +33,7 @@ export default function DiagramCanvas({
     onFit,
     onReset,
 }) {
+    const flow = getSelectionFlow({ nodes, dataMappings, selectedNodeId, selectedMethodId });
     return (
         <div
             ref={wrapperRef}
@@ -56,6 +61,7 @@ export default function DiagramCanvas({
                     connectionStartNode={connectionStartNode}
                     mouseWorldPos={mouseWorldPos}
                     selectedNodeId={selectedNodeId}
+                    flowLines={flow.lines}
                     onDelete={onDeleteEdge}
                 />
                 {[...nodes]
@@ -67,12 +73,16 @@ export default function DiagramCanvas({
                             isSelected={selectedNodeId === node.id}
                             isConnectionSource={connectionStartNode === node.id}
                             isDragging={dragInfo.isDragging && dragInfo.nodeId === node.id}
+                            selectedMethodId={selectedNodeId === node.id ? selectedMethodId : null}
+                            fieldHighlights={flow.highlights}
                             onMouseDown={onNodeMouseDown}
                             onResizeStart={onResizeStart}
                             onUpdate={onUpdateNode}
+                            onMethodSelect={onSelectMethod}
                         />
                     ))}
             </div>
+            {flow.lines.length > 0 && <div className="data-flow-legend"><span className="legend-input">● Input / skriv</span><span className="legend-output">● Output / läs</span><span className="legend-both">● Båda</span><span className="legend-warning">▲ Varningar i Flow Health</span></div>}
             <ZoomControls zoom={zoom} onZoomIn={onZoomIn} onZoomOut={onZoomOut} onFit={onFit} onReset={onReset} />
         </div>
     );

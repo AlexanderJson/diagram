@@ -2,15 +2,18 @@ import React from 'react';
 import DiagramCanvas from './components/DiagramCanvas.jsx';
 import DetailModal from './components/DetailModal.jsx';
 import Dialog from './components/Dialog.jsx';
+import FlowHealthPanel from './components/FlowHealthPanel.jsx';
 import PropertiesPanel from './components/PropertiesPanel.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Topbar from './components/Topbar.jsx';
 import { useDiagramEditor } from './hooks/useDiagramEditor.js';
+import { getFlowWarnings } from './utils/dataFlow.js';
 
 export default function App() {
     const editor = useDiagramEditor();
     const selectedNode = editor.nodes.find((node) => node.id === editor.selectedNodeId);
     const detailNode = editor.nodes.find((node) => node.id === editor.detailModalNodeId);
+    const flowWarnings = getFlowWarnings(editor.nodes, editor.edges, editor.dataMappings);
 
     return (
         <div className="app-container">
@@ -27,12 +30,16 @@ export default function App() {
                     onImport={editor.importJson}
                     onExport={editor.exportJson}
                     onClear={editor.clearDiagram}
+                    flowWarningCount={flowWarnings.length}
+                    onToggleFlowHealth={() => editor.setIsFlowHealthOpen((open) => !open)}
                 />
                 <DiagramCanvas
                     wrapperRef={editor.wrapperRef}
                     nodes={editor.nodes}
                     edges={editor.edges}
+                    dataMappings={editor.dataMappings}
                     selectedNodeId={editor.selectedNodeId}
+                    selectedMethodId={editor.selectedMethodId}
                     connectionStartNode={editor.connectionStartNode}
                     isConnecting={editor.isConnecting}
                     isPanning={editor.isPanning}
@@ -47,6 +54,7 @@ export default function App() {
                     onNodeMouseDown={editor.handleNodeMouseDown}
                     onResizeStart={editor.handleResizeStart}
                     onUpdateNode={editor.updateNode}
+                    onSelectMethod={editor.selectMethod}
                     onDeleteEdge={editor.deleteEdge}
                     onCanvasClick={editor.handleCanvasClick}
                     onZoomIn={editor.zoomIn}
@@ -56,11 +64,18 @@ export default function App() {
                 />
                 <PropertiesPanel
                     node={selectedNode}
+                    nodes={editor.nodes}
+                    dataMappings={editor.dataMappings}
                     updateNode={editor.updateNode}
+                    addDataMapping={editor.addDataMapping}
+                    updateDataMapping={editor.updateDataMapping}
+                    removeDataMapping={editor.removeDataMapping}
                     deselectNode={() => editor.setSelectedNodeId(null)}
                     deleteNode={editor.deleteNode}
                     openDetailModal={editor.setDetailModalNodeId}
+                    onSelectNode={editor.selectNode}
                 />
+                {editor.isFlowHealthOpen && <FlowHealthPanel warnings={flowWarnings} onClose={() => editor.setIsFlowHealthOpen(false)} onSelectNode={editor.selectNode} />}
             </main>
             <DetailModal
                 node={detailNode}

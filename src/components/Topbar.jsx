@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from '../icons/Icons.jsx';
 
-export default function Topbar({ isConnecting, isCopied, onShare, onImport, onExport, onClear }) {
+export default function Topbar({ isConnecting, isCopied, onShare, onImport, onExport, onClear, flowWarningCount, onToggleFlowHealth }) {
     return (
         <div className="topbar">
             <div className="topbar-left">
@@ -17,6 +17,9 @@ export default function Topbar({ isConnecting, isCopied, onShare, onImport, onEx
                 <button className="btn-primary-action" onClick={onShare}>
                     {isCopied ? <Icons.Check /> : <Icons.Share2 />}
                     {isCopied ? 'Kopierad!' : 'Dela'}
+                </button>
+                <button className={`btn-action flow-health-btn ${flowWarningCount ? 'has-warnings' : ''}`} onClick={onToggleFlowHealth}>
+                    <Icons.AlertTriangle /> Flow Health{flowWarningCount ? ` (${flowWarningCount})` : ''}
                 </button>
                 <div className="divider" />
                 <label className="btn-action">

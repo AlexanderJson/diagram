@@ -19,8 +19,11 @@ const emptyDragInfo = {
 export function useDiagramEditor() {
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
+    const [dataMappings, setDataMappings] = useState([]);
     const [selectedNodeId, setSelectedNodeId] = useState(null);
+    const [selectedMethodId, setSelectedMethodId] = useState(null);
     const [detailModalNodeId, setDetailModalNodeId] = useState(null);
+    const [isFlowHealthOpen, setIsFlowHealthOpen] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [connectionStartNode, setConnectionStartNode] = useState(null);
     const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -60,14 +63,49 @@ export function useDiagramEditor() {
     }, []);
 
     const updateNode = (id, data) => {
+        if (Array.isArray(data.fields)) {
+            const fieldIds = new Set(data.fields.map((field) => field.id));
+            setDataMappings((currentMappings) => currentMappings.filter((mapping) => {
+                if (mapping.modelNodeId === id) return fieldIds.has(mapping.modelFieldId);
+                if (mapping.tableNodeId === id) return fieldIds.has(mapping.tableFieldId);
+                return true;
+            }));
+        }
         setNodes((currentNodes) => currentNodes.map((node) => node.id === id ? { ...node, ...data } : node));
     };
 
     const deleteNode = (id) => {
-        setNodes((currentNodes) => currentNodes.filter((node) => node.id !== id));
+        setNodes((currentNodes) => currentNodes
+            .filter((node) => node.id !== id)
+            .map((node) => ({
+                ...node,
+                requestModelId: node.requestModelId === id ? null : node.requestModelId,
+                responseModelId: node.responseModelId === id ? null : node.responseModelId,
+                methods: node.methods?.map((method) => ({
+                    ...method,
+                    inputModelId: method.inputModelId === id ? null : method.inputModelId,
+                    returnModelId: method.returnModelId === id ? null : method.returnModelId,
+                })),
+            })));
         setEdges((currentEdges) => currentEdges.filter((edge) => edge.source !== id && edge.target !== id));
+        setDataMappings((currentMappings) => currentMappings.filter((mapping) => mapping.modelNodeId !== id && mapping.tableNodeId !== id));
         setSelectedNodeId(null);
+        setSelectedMethodId(null);
     };
+
+    const addDataMapping = (mapping) => {
+        if (!mapping.modelNodeId || !mapping.modelFieldId || !mapping.tableNodeId || !mapping.tableFieldId) return;
+        setDataMappings((currentMappings) => {
+            const duplicate = currentMappings.some((item) => item.modelNodeId === mapping.modelNodeId
+                && item.modelFieldId === mapping.modelFieldId
+                && item.tableNodeId === mapping.tableNodeId
+                && item.tableFieldId === mapping.tableFieldId);
+            if (duplicate) return currentMappings;
+            return [...currentMappings, { id: `mapping-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, direction: 'both', ...mapping }];
+        });
+    };
+    const updateDataMapping = (id, data) => setDataMappings((currentMappings) => currentMappings.map((mapping) => mapping.id === id ? { ...mapping, ...data } : mapping));
+    const removeDataMapping = (id) => setDataMappings((currentMappings) => currentMappings.filter((mapping) => mapping.id !== id));
 
     const deleteEdge = (id) => setEdges((currentEdges) => currentEdges.filter((edge) => edge.id !== id));
 
@@ -158,6 +196,7 @@ export function useDiagramEditor() {
         setNodes((currentNodes) => [...currentNodes, ...newNodes]);
         setEdges((currentEdges) => [...currentEdges, ...newEdges]);
         setSelectedNodeId(newNodes.find((node) => node.type !== 'group')?.id || null);
+        setSelectedMethodId(null);
     };
 
     const handleSidebarDragStart = (event, type, label) => {
@@ -183,6 +222,7 @@ export function useDiagramEditor() {
         });
         setNodes((currentNodes) => [...currentNodes, newNode]);
         setSelectedNodeId(newNode.id);
+        setSelectedMethodId(null);
     };
 
     const handleNodeMouseDown = (event, nodeId) => {
@@ -203,6 +243,7 @@ export function useDiagramEditor() {
         }
 
         setSelectedNodeId(nodeId);
+        setSelectedMethodId(null);
         if (event.button !== 0) return;
         const node = nodes.find((item) => item.id === nodeId);
         if (!node) return;
@@ -285,6 +326,7 @@ export function useDiagramEditor() {
     const handleCanvasClick = (event) => {
         if (event.target !== wrapperRef.current && event.target.id !== 'canvas-world') return;
         setSelectedNodeId(null);
+        setSelectedMethodId(null);
         if (isConnecting) {
             setIsConnecting(false);
             setConnectionStartNode(null);
@@ -300,13 +342,15 @@ export function useDiagramEditor() {
         onConfirm: () => {
             setNodes([]);
             setEdges([]);
+            setDataMappings([]);
             setSelectedNodeId(null);
+            setSelectedMethodId(null);
             closeDialog();
         },
     });
 
     const exportJson = () => {
-        const href = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify({ nodes, edges }))}`;
+        const href = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify({ version: 2, nodes, edges, dataMappings }))}`;
         const anchor = document.createElement('a');
         anchor.href = href;
         anchor.download = 'archsketch-export.json';
@@ -323,9 +367,26 @@ export function useDiagramEditor() {
             try {
                 const data = JSON.parse(loadEvent.target.result);
                 if (Array.isArray(data.nodes)) {
-                    setNodes(data.nodes);
+                    const importedNodes = data.nodes.map((node) => ({
+                        ...node,
+                        fields: node.fields?.map((field) => ({ classification: 'normal', persistenceBacked: false, ...field })),
+                        methods: node.methods?.map((method) => ({ inputModelId: null, returnModelId: null, ...method })),
+                        requestModelId: node.requestModelId || null,
+                        responseModelId: node.responseModelId || null,
+                    }));
+                    const importedById = new Map(importedNodes.map((node) => [node.id, node]));
+                    const importedMappings = Array.isArray(data.dataMappings) ? data.dataMappings.filter((mapping) => {
+                        const model = importedById.get(mapping.modelNodeId);
+                        const table = importedById.get(mapping.tableNodeId);
+                        return model?.fields?.some((field) => field.id === mapping.modelFieldId)
+                            && table?.type === 'dbtable'
+                            && table.fields?.some((field) => field.id === mapping.tableFieldId);
+                    }) : [];
+                    setNodes(importedNodes);
                     setEdges(data.edges || []);
+                    setDataMappings(importedMappings);
                     setSelectedNodeId(null);
+                    setSelectedMethodId(null);
                 }
             } catch {
                 setDialog({ isOpen: true, title: 'Fel vid import', message: 'Kunde inte läsa filen. Är det en giltig JSON?', isAlert: true });
@@ -340,13 +401,23 @@ export function useDiagramEditor() {
         setTimeout(() => setIsCopied(false), 2000);
     };
 
+    const selectNode = (id) => {
+        setSelectedNodeId(id);
+        setSelectedMethodId(null);
+    };
+
+    const selectMethod = (nodeId, methodId) => {
+        setSelectedNodeId(nodeId);
+        setSelectedMethodId(methodId);
+    };
+
     return {
-        nodes, edges, selectedNodeId, detailModalNodeId, isConnecting, connectionStartNode,
+        nodes, edges, dataMappings, selectedNodeId, selectedMethodId, detailModalNodeId, isConnecting, connectionStartNode,
         pan, zoom, isPanning, mouseWorldPos, dragInfo, dialog, isCopied, wrapperRef,
-        updateNode, deleteNode, deleteEdge, createCustomNode, addTemplate, resetView, fitView, zoomIn, zoomOut,
+        updateNode, deleteNode, deleteEdge, addDataMapping, updateDataMapping, removeDataMapping, createCustomNode, addTemplate, resetView, fitView, zoomIn, zoomOut,
         handleSidebarDragStart, handleDrop, handleNodeMouseDown, handleResizeStart,
         handleCanvasMouseDown, handleMouseMove, handleMouseUp, handleCanvasClick,
-        clearDiagram, closeDialog, exportJson, importJson, share,
-        setSelectedNodeId, setDetailModalNodeId,
+        clearDiagram, closeDialog, exportJson, importJson, share, isFlowHealthOpen, setIsFlowHealthOpen,
+        selectNode, selectMethod, setSelectedNodeId: selectNode, setDetailModalNodeId,
     };
 }

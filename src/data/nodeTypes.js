@@ -21,10 +21,18 @@ export const NODE_TYPES = [
         item('cache', 'Cache', Icons.Zap, 'node-teal', 'Snabb, tillfällig lagring.'),
     ] },
     { category: 'API & Delivery', items: [
-        item('endpoint', 'Endpoint', Icons.Network, 'node-sky', 'En URL som tar emot ett API-anrop.'),
+        item('endpoint', 'Endpoint', Icons.Network, 'node-sky', 'En URL som tar emot ett API-anrop.', {
+            httpMethod: 'GET',
+            route: '/resource',
+            requestType: '',
+            responseType: '',
+            successStatus: '200',
+            requestModelId: null,
+            responseModelId: null,
+        }),
         item('controller', 'Controller', Icons.Code, 'node-blue', 'Tar emot API-anrop och skickar dem till applikationslagret.'),
         item('middleware', 'Middleware', Icons.Layers, 'node-slate', 'Hanterar tvärgående HTTP-logik.'),
-        item('dto', 'DTO', Icons.FileText, 'node-white-indigo', 'Data som skickas mellan API och klient.'),
+        item('dto', 'DTO', Icons.FileText, 'node-white-indigo', 'Data som skickas mellan API och klient.', { fields: [] }),
     ] },
     { category: 'Application & CQRS', items: [
         item('service', 'Service', Icons.Settings, 'node-indigo', 'Orkestrerar en tydlig affärsåtgärd.'),
@@ -39,7 +47,9 @@ export const NODE_TYPES = [
     { category: 'Domain Model', items: [
         item('classnode', 'Klass', Icons.Code, 'node-white-purple', 'En klass med egenskaper och metoder.', { properties: [], methods: [] }),
         item('interface', 'Interface', Icons.Code, 'node-white-pink', 'Ett kontrakt som implementationer följer.', { properties: [], methods: [] }),
-        item('entity', 'Entity', Icons.Box, 'node-white-purple', 'Ett domänobjekt med stabil identitet.'),
+        item('entity', 'Entity', Icons.Box, 'node-white-purple', 'Ett domänobjekt med stabil identitet.', { fields: [] }),
+        item('record', 'Record', Icons.FileText, 'node-white-pink', 'Ett litet, oftast oföränderligt dataobjekt.', { fields: [] }),
+        item('model', 'Model', Icons.Box, 'node-white-indigo', 'En data- eller presentationsmodell.', { fields: [] }),
         item('valueobject', 'Value Object', Icons.Layers, 'node-white-pink', 'Ett domänvärde utan egen identitet.'),
         item('aggregate', 'Aggregate', Icons.Box, 'node-amber', 'En konsekvensgräns för relaterade domänobjekt.'),
     ] },
