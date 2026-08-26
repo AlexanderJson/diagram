@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Icons } from '../icons/Icons.jsx';
-import { createDataField, findSuggestedMappings, isDataModel } from '../utils/dataFlow.js';
-
-const emptyMapping = { modelFieldId: '', tableNodeId: '', tableFieldId: '', direction: 'both' };
+import { createDataField, findSuggestedMappings, isDataModel, normalizeFieldName } from '../utils/dataFlow.js';
 
 function ModelSelect({ value, models, onChange, placeholder = 'Ingen modell' }) {
     return <select value={value || ''} onChange={(event) => onChange(event.target.value || null)}><option value="">{placeholder}</option>{models.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}</select>;
@@ -21,11 +19,11 @@ export default function PropertiesPanel({
     openDetailModal,
     onSelectNode,
 }) {
-    const [newMapping, setNewMapping] = useState(emptyMapping);
+    const [selectedMappingTableIds, setSelectedMappingTableIds] = useState([]);
     const modelNodes = useMemo(() => nodes.filter(isDataModel), [nodes]);
     const tableNodes = useMemo(() => nodes.filter((item) => item.type === 'dbtable'), [nodes]);
     useEffect(() => {
-        if (node) setNewMapping({ modelFieldId: node.fields?.[0]?.id || '', tableNodeId: '', tableFieldId: '', direction: 'both' });
+        setSelectedMappingTableIds([]);
     }, [node?.id]);
     if (!node || node.type === 'note') return null;
 
@@ -33,7 +31,6 @@ export default function PropertiesPanel({
     const isClassType = node.type === 'classnode' || node.type === 'interface';
     const currentMappings = dataMappings.filter((mapping) => mapping.modelNodeId === node.id);
     const suggestions = findSuggestedMappings(node, nodes, dataMappings);
-    const selectedTable = tableNodes.find((table) => table.id === newMapping.tableNodeId);
 
     const addField = () => updateNode(node.id, { fields: [...(node.fields || []), createDataField()] });
     const updateField = (fieldId, key, value) => updateNode(node.id, { fields: (node.fields || []).map((field) => field.id === fieldId ? { ...field, [key]: value } : field) });
@@ -44,6 +41,27 @@ export default function PropertiesPanel({
     const addClassMethod = () => updateNode(node.id, { methods: [...(node.methods || []), { id: `${Date.now()}`, visibility: '+', name: 'NyMetod', type: 'void', inputModelId: null, returnModelId: null }] });
     const updateClassMethod = (methodId, key, value) => updateNode(node.id, { methods: (node.methods || []).map((method) => method.id === methodId ? { ...method, [key]: value } : method) });
     const removeClassMethod = (methodId) => updateNode(node.id, { methods: (node.methods || []).filter((method) => method.id !== methodId) });
+    const addMappingsFromTable = (table, drafts) => {
+        const nextFields = [...(node.fields || [])];
+        const mappingsToAdd = drafts.filter((draft) => draft.tableFieldId).map((draft) => {
+            const tableField = table.fields?.find((field) => field.id === draft.tableFieldId);
+            if (!tableField) return null;
+            let modelFieldId = draft.modelFieldId;
+            if (!modelFieldId) {
+                const existingField = nextFields.find((field) => normalizeFieldName(field.name) === normalizeFieldName(tableField.name));
+                if (existingField) {
+                    modelFieldId = existingField.id;
+                } else {
+                    const newField = { ...createDataField(), name: tableField.name, type: tableField.type, persistenceBacked: true };
+                    nextFields.push(newField);
+                    modelFieldId = newField.id;
+                }
+            }
+            return { modelNodeId: node.id, modelFieldId, tableNodeId: table.id, tableFieldId: tableField.id, direction: draft.direction };
+        }).filter(Boolean);
+        if (nextFields.length !== (node.fields || []).length) updateNode(node.id, { fields: nextFields });
+        mappingsToAdd.forEach(addDataMapping);
+    };
     const linkedUses = [
         ...nodes.filter((item) => item.type === 'endpoint' && (item.requestModelId === node.id || item.responseModelId === node.id)).map((item) => ({ node: item, label: `Endpoint · ${item.label}` })),
         ...nodes.filter((item) => isClassTypeNode(item)).flatMap((item) => (item.methods || []).filter((method) => method.inputModelId === node.id || method.returnModelId === node.id).map((method) => ({ node: item, label: `${item.label}.${method.name}()` }))),
@@ -73,7 +91,7 @@ export default function PropertiesPanel({
                         <button className="btn-ghost full-width" onClick={addField}><Icons.Plus /> Lägg till fält</button>
                     </div>}
 
-                    {isDataModel(node) && <DataMappingEditor node={node} tables={tableNodes} mappings={currentMappings} suggestions={suggestions} newMapping={newMapping} selectedTable={selectedTable} setNewMapping={setNewMapping} addDataMapping={addDataMapping} updateDataMapping={updateDataMapping} removeDataMapping={removeDataMapping} />}
+                    {isDataModel(node) && <DataMappingEditor node={node} tables={tableNodes} mappings={currentMappings} suggestions={suggestions} selectedTableIds={selectedMappingTableIds} setSelectedTableIds={setSelectedMappingTableIds} addDataMapping={addDataMapping} addMappingsFromTable={addMappingsFromTable} updateDataMapping={updateDataMapping} removeDataMapping={removeDataMapping} />}
 
                     {isDataModel(node) && <div className="section-divider"><label>Används av</label>{linkedUses.length ? <div className="linked-use-list">{linkedUses.map((use, index) => <button key={`${use.node.id}-${index}`} className="linked-use" onClick={() => onSelectNode(use.node.id)}>{use.label}</button>)}</div> : <div className="hint-text">Inga Endpoints eller metoder refererar till denna modell.</div>}</div>}
 
@@ -99,23 +117,29 @@ function EndpointEditor({ node, models, updateNode }) {
     </div>;
 }
 
-function DataMappingEditor({ node, tables, mappings, suggestions, newMapping, selectedTable, setNewMapping, addDataMapping, updateDataMapping, removeDataMapping }) {
-    const tableFields = selectedTable?.fields || [];
-    const add = () => {
-        addDataMapping({ modelNodeId: node.id, ...newMapping });
-        setNewMapping((current) => ({ ...current, tableFieldId: '' }));
-    };
+function DataMappingEditor({ node, tables, mappings, suggestions, selectedTableIds, setSelectedTableIds, addDataMapping, addMappingsFromTable, updateDataMapping, removeDataMapping }) {
+    const selectedTables = tables.filter((table) => selectedTableIds.includes(table.id));
     return <div className="section-divider"><label>Databas-mappningar</label>
         {suggestions.length > 0 && <div className="mapping-suggestions"><span>Samma namn hittades:</span>{suggestions.map((suggestion) => <button key={`${suggestion.modelField.id}-${suggestion.tableNode.id}`} className="suggestion-btn" onClick={() => addDataMapping({ modelNodeId: node.id, modelFieldId: suggestion.modelField.id, tableNodeId: suggestion.tableNode.id, tableFieldId: suggestion.tableField.id, direction: 'both' })}>Koppla {suggestion.modelField.name} → {suggestion.tableNode.label}.{suggestion.tableField.name}</button>)}</div>}
-        <div className="mapping-create">
-            <select value={newMapping.modelFieldId} onChange={(event) => setNewMapping((current) => ({ ...current, modelFieldId: event.target.value }))}><option value="">Modellfält</option>{(node.fields || []).map((field) => <option key={field.id} value={field.id}>{field.name}</option>)}</select>
-            <select value={newMapping.tableNodeId} onChange={(event) => setNewMapping((current) => ({ ...current, tableNodeId: event.target.value, tableFieldId: '' }))}><option value="">Databastabell</option>{tables.map((table) => <option key={table.id} value={table.id}>{table.label}</option>)}</select>
-            <select value={newMapping.tableFieldId} onChange={(event) => setNewMapping((current) => ({ ...current, tableFieldId: event.target.value }))}><option value="">Kolumn</option>{tableFields.map((field) => <option key={field.id} value={field.id}>{field.name}</option>)}</select>
-            <select value={newMapping.direction} onChange={(event) => setNewMapping((current) => ({ ...current, direction: event.target.value }))}><option value="read">Läs</option><option value="write">Skriv</option><option value="both">Båda</option></select>
-            <button className="btn-ghost" onClick={add}><Icons.Plus /> Mappa</button>
-        </div>
+        <div className="mapping-table-selector"><span>Välj en eller flera tabeller</span><select multiple value={selectedTableIds} onChange={(event) => setSelectedTableIds(Array.from(event.target.selectedOptions, (option) => option.value))}>{tables.map((table) => <option key={table.id} value={table.id}>{table.label}</option>)}</select><small>Håll Ctrl (Windows) eller Cmd (Mac) för att välja flera.</small></div>
+        {selectedTables.map((table) => <TableMappingComposer key={table.id} node={node} table={table} onSaveDrafts={addMappingsFromTable} />)}
         {mappings.length > 0 && <div className="mapping-list">{mappings.map((mapping) => <MappingRow key={mapping.id} mapping={mapping} node={node} tables={tables} updateDataMapping={updateDataMapping} removeDataMapping={removeDataMapping} />)}</div>}
     </div>;
+}
+
+function TableMappingComposer({ node, table, onSaveDrafts }) {
+    const createDraft = () => ({ modelFieldId: '', tableFieldId: '', direction: 'both' });
+    const [drafts, setDrafts] = useState([createDraft()]);
+    useEffect(() => {
+        setDrafts([createDraft()]);
+    }, [node.id, table.id]);
+    const updateDraft = (index, key, value) => setDrafts((current) => current.map((draft, draftIndex) => draftIndex === index ? { ...draft, [key]: value } : draft));
+    const validDrafts = drafts.filter((draft) => draft.tableFieldId);
+    const saveDrafts = () => {
+        onSaveDrafts(table, validDrafts);
+        setDrafts([createDraft()]);
+    };
+    return <div className="mapping-table-composer"><strong>{table.label}</strong><span className="mapping-table-helper">Välj en befintlig modellfält, eller lämna den tom för att skapa ett fält från kolumnens namn och typ.</span><div className="mapping-draft-list">{drafts.map((draft, index) => <div className="mapping-draft-row" key={index}><select value={draft.modelFieldId} onChange={(event) => updateDraft(index, 'modelFieldId', event.target.value)}><option value="">Skapa från kolumn</option>{(node.fields || []).map((field) => <option key={field.id} value={field.id}>{field.name}</option>)}</select><select value={draft.tableFieldId} onChange={(event) => updateDraft(index, 'tableFieldId', event.target.value)}><option value="">Kolumn</option>{(table.fields || []).map((field) => <option key={field.id} value={field.id}>{field.name}</option>)}</select><select value={draft.direction} onChange={(event) => updateDraft(index, 'direction', event.target.value)}><option value="read">Läs</option><option value="write">Skriv</option><option value="both">Båda</option></select>{drafts.length > 1 && <button className="icon-btn-danger" onClick={() => setDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index))}><Icons.X /></button>}</div>)}</div><div className="mapping-composer-actions"><button className="btn-ghost" onClick={() => setDrafts((current) => [...current, createDraft()])}><Icons.Plus /> Lägg till fältpar</button><button className="btn-ghost" onClick={saveDrafts} disabled={validDrafts.length === 0}><Icons.Check /> Mappa {validDrafts.length || ''} fält{validDrafts.length === 1 ? '' : 'par'}</button></div></div>;
 }
 
 function MappingRow({ mapping, node, tables, updateDataMapping, removeDataMapping }) {

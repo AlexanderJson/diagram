@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from '../icons/Icons.jsx';
 
-export default function Topbar({ isConnecting, isCopied, onShare, onImport, onExport, onClear, flowWarningCount, onToggleFlowHealth }) {
+export default function Topbar({ isConnecting, isCopied, onShare, onImport, onExport, onClear, flowWarningCount, onToggleFlowHealth, onToggleAppearance }) {
     return (
         <div className="topbar">
             <div className="topbar-left">
@@ -21,6 +21,7 @@ export default function Topbar({ isConnecting, isCopied, onShare, onImport, onEx
                 <button className={`btn-action flow-health-btn ${flowWarningCount ? 'has-warnings' : ''}`} onClick={onToggleFlowHealth}>
                     <Icons.AlertTriangle /> Flow Health{flowWarningCount ? ` (${flowWarningCount})` : ''}
                 </button>
+                <button className="btn-action" onClick={onToggleAppearance}><Icons.Settings /> Utseende</button>
                 <div className="divider" />
                 <label className="btn-action">
                     <Icons.Upload /> Importera

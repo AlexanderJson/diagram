@@ -61,7 +61,6 @@ export default function DiagramCanvas({
                     connectionStartNode={connectionStartNode}
                     mouseWorldPos={mouseWorldPos}
                     selectedNodeId={selectedNodeId}
-                    flowLines={flow.lines}
                     onDelete={onDeleteEdge}
                 />
                 {[...nodes]
@@ -82,7 +81,7 @@ export default function DiagramCanvas({
                         />
                     ))}
             </div>
-            {flow.lines.length > 0 && <div className="data-flow-legend"><span className="legend-input">● Input / skriv</span><span className="legend-output">● Output / läs</span><span className="legend-both">● Båda</span><span className="legend-warning">▲ Varningar i Flow Health</span></div>}
+            {flow.highlights.size > 0 && <div className="data-flow-legend"><span className="legend-input">● Fält: input / skriv</span><span className="legend-output">● Fält: output / läs</span><span className="legend-both">● Fält: båda</span><span className="legend-warning">▲ Varningar i Flow Health</span></div>}
             <ZoomControls zoom={zoom} onZoomIn={onZoomIn} onZoomOut={onZoomOut} onFit={onFit} onReset={onReset} />
         </div>
     );

@@ -13,12 +13,25 @@ never replace your existing work.
 ## Field-level data flow
 
 DTOs, Records, Entities, and Models can contain editable fields. Map a model
-field to a database-table column in its **Egenskaper** panel, then select the
-model to see temporary field-level flow lines:
+field to a database-table column in its **Egenskaper** panel. You can select
+several database tables and add several explicit field pairs for each one.
+Selecting the
+model highlights only the participating fields, keeping the diagram uncluttered:
 
-- Orange: expected input / write flow.
-- Blue: returned output / read flow.
-- Purple: a mapping marked as both.
+- Orange: expected input / write fields.
+- Blue: returned output / read fields.
+- Purple: a field mapping marked as both.
+
+Ordinary architecture arrows remain the only lines between modules and still
+highlight when a connected node is selected.
+
+Creating fields manually is optional: in a table mapping row, leave
+**Modellfält** on **Skapa från kolumn**, choose a database column, and save. The
+model receives a persistence-backed field using that column's name and type.
+
+Use **Utseende** in the top bar to choose the warm dark theme and adjust the
+three field-glow colors. These appearance preferences are saved locally in your
+browser, not in the diagram export.
 
 Endpoints can reference one input and one output model. Classes and interfaces
 can do the same per method; click a method on its diagram node to inspect that

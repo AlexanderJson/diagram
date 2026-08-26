@@ -1,4 +1,4 @@
-import { getFieldAnchor, getNodeCenter, isDataModelNode } from './nodeLayout.js';
+import { isDataModelNode } from './nodeLayout.js';
 
 export const DATA_MODEL_TYPES = ['dto', 'record', 'entity', 'model'];
 
@@ -46,34 +46,6 @@ function addHighlight(highlights, nodeId, fieldId, role) {
     highlights.set(key, previous && previous !== role ? 'both' : role);
 }
 
-function mappingVisual(mapping, nodes, role, viaNode = null) {
-    const model = nodes.find((node) => node.id === mapping.modelNodeId);
-    const table = nodes.find((node) => node.id === mapping.tableNodeId);
-    if (!isDataModel(model) || table?.type !== 'dbtable') return null;
-    const modelAnchor = getFieldAnchor(model, mapping.modelFieldId, table.x < model.x ? 'left' : 'right');
-    const tableAnchor = getFieldAnchor(table, mapping.tableFieldId, model.x < table.x ? 'left' : 'right');
-    if (viaNode) {
-        const center = getNodeCenter(viaNode);
-        return {
-            lines: [
-                { start: center, end: modelAnchor, role, kind: 'contract' },
-                { start: modelAnchor, end: tableAnchor, role, kind: 'mapping' },
-            ],
-            fields: [
-                { nodeId: model.id, fieldId: mapping.modelFieldId, role },
-                { nodeId: table.id, fieldId: mapping.tableFieldId, role },
-            ],
-        };
-    }
-    return {
-        lines: [{ start: modelAnchor, end: tableAnchor, role, kind: 'mapping' }],
-        fields: [
-            { nodeId: model.id, fieldId: mapping.modelFieldId, role },
-            { nodeId: table.id, fieldId: mapping.tableFieldId, role },
-        ],
-    };
-}
-
 export function getSelectionFlow({ nodes, dataMappings, selectedNodeId, selectedMethodId }) {
     const selected = nodes.find((node) => node.id === selectedNodeId);
     if (!selected) return { lines: [], highlights: new Map() };
@@ -96,13 +68,16 @@ export function getSelectionFlow({ nodes, dataMappings, selectedNodeId, selected
     }
 
     const highlights = new Map();
-    const lines = requests.flatMap(({ mapping, role, viaNode }) => {
-        const visual = mappingVisual(mapping, nodes, role, viaNode);
-        if (!visual) return [];
-        visual.fields.forEach((field) => addHighlight(highlights, field.nodeId, field.fieldId, field.role));
-        return visual.lines;
+    requests.forEach(({ mapping, role }) => {
+        const model = nodes.find((node) => node.id === mapping.modelNodeId);
+        const table = nodes.find((node) => node.id === mapping.tableNodeId);
+        if (!isDataModel(model) || table?.type !== 'dbtable') return;
+        if (!(model.fields || []).some((field) => field.id === mapping.modelFieldId)) return;
+        if (!(table.fields || []).some((field) => field.id === mapping.tableFieldId)) return;
+        addHighlight(highlights, model.id, mapping.modelFieldId, role);
+        addHighlight(highlights, table.id, mapping.tableFieldId, role);
     });
-    return { lines, highlights };
+    return { lines: [], highlights };
 }
 
 export function getFlowWarnings(nodes, edges, dataMappings) {
